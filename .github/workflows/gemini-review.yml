@@ -106,4 +106,35 @@ jobs:
                 "run_shell_command(tail)"
               ]
             }
-          prompt: '/security:analyze'
+          prompt: |-
+            1. Call /security:analyze and run a report.
+            2. **Add Comments and Suggestions:** For each formulated review comment, call `mcp__github__add_comment_to_pending_review`.
+
+              2a. When there is a code suggestion (preferred), structure the comment payload using this exact template:
+
+                  <COMMENT>
+                  {{SEVERITY}} {{COMMENT_TEXT}}
+
+                  ```suggestion
+                  {{CODE_SUGGESTION}}
+                  ```
+                  </COMMENT>
+
+              2b. When there is no code suggestion, structure the comment payload using this exact template:
+
+                  <COMMENT>
+                  {{SEVERITY}} {{COMMENT_TEXT}}
+                  </COMMENT>
+
+            3. **Submit Final Review:** Call `mcp__github__submit_pending_pull_request_review` with a summary comment and event type "COMMENT". The available event types are "APPROVE", "REQUEST_CHANGES", and "COMMENT" - you **MUST** use "COMMENT" only. **DO NOT** use "APPROVE" or "REQUEST_CHANGES" event types. The summary comment **MUST** use this exact markdown format:
+
+                <SUMMARY>
+                ## 📋 Review Summary
+
+                A brief, high-level assessment of the Pull Request's objective and quality (2-3 sentences).
+
+                ## 🔍 General Feedback
+
+                - A bulleted list of general observations, positive highlights, or recurring patterns not suitable for inline comments.
+                - Keep this section concise and do not repeat details already covered in inline comments.
+                </SUMMARY>
