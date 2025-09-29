@@ -106,5 +106,4 @@ jobs:
                 "run_shell_command(tail)"
               ]
             }
-          prompt: |-
-            /security:analyze
+          prompt: '/security:analyze'
