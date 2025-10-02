@@ -332,7 +332,11 @@ jobs:
                   <SUMMARY>
                   ## 📋 Review Summary
 
-                  A brief, high-level assessment of the Pull Request's objective and quality (2-3 sentences).
+                  A brief, high-level assessment of the Pull Request's objective and quality from the first report. (2-3 sentences).
+
+                  ## Security Summary
+
+                  A brief, high-level assessment of the Pull Request's security analysis from the second report. (2-3 sentences).
 
                   ## 🔍 General Feedback
 
