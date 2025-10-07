@@ -268,16 +268,19 @@ jobs:
             - **Tags:** The summary **MUST** be enclosed in `<summary>` and `</summary>` tags.
 
             This is not a suggestion, but a **strict requirement** for task completion. Failure to provide the summary in the specified format will cause the entire workflow to fail. Do not add any other text or explanation after the closing `</summary>` tag.
-
       - name: 'Parse Gemini Summary'
         id: 'parse_summary'
         shell: 'bash'
         run: |
           SUMMARY_FULL="${{ steps.gemini_pr_review.outputs.summary }}"
-          SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
-          SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
+          if [[ "$SUMMARY_FULL" == *"<summary>"* && "$SUMMARY_FULL" == *"</summary>"* ]]; then
+            SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
+            SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
+          else
+            SUMMARY_PARSED="Summary not found in Gemini output."
+          fi
           echo "summary<<EOF" >> $GITHUB_OUTPUT
-          echo "$SUMMARY_PARSED" >> $GITHUB_OUTPUT
+          printf "%s\n" "$SUMMARY_PARSED" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
   security_review:
     runs-on: 'ubuntu-latest'
@@ -441,16 +444,19 @@ jobs:
             - **Tags:** The summary **MUST** be enclosed in `<summary>` and `</summary>` tags.
 
             This is not a suggestion, but a **strict requirement** for task completion. Failure to provide the summary in the specified format will cause the entire workflow to fail. Do not add any other text or explanation after the closing `</summary>` tag.
-
       - name: 'Parse Gemini Summary'
         id: 'parse_summary'
         shell: 'bash'
         run: |
           SUMMARY_FULL="${{ steps.gemini_pr_review.outputs.summary }}"
-          SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
-          SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
+          if [[ "$SUMMARY_FULL" == *"<summary>"* && "$SUMMARY_FULL" == *"</summary>"* ]]; then
+            SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
+            SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
+          else
+            SUMMARY_PARSED="Summary not found in Gemini output."
+          fi
           echo "summary<<EOF" >> $GITHUB_OUTPUT
-          echo "$SUMMARY_PARSED" >> $GITHUB_OUTPUT
+          printf "%s\n" "$SUMMARY_PARSED" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
   submit_review:
     runs-on: 'ubuntu-latest'
