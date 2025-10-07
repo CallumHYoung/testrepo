@@ -234,7 +234,7 @@ jobs:
 
             - Comments in markdown (.md) files: `🟢` (Low) or `🟡` (Medium).
 
-            ### Step 3: Submit the Review on GitHub
+            ### Step 3: Create a Pending PR Review and Add Comments
 
             1. **Create Pending Review:** Call `mcp__github__create_pending_pull_request_review`. Ignore errors like "can only have one pending review per pull request" and proceed to the next step.
 
@@ -373,7 +373,7 @@ jobs:
           prompt: |-
             ## Role
 
-            You are a highly skilled senior security analyst. You operate within a secure GitHub Actions environment. Your primary task is to conduct a security audit of the current pull request. Utilizing your skillset, you must operate by strictly following the operating principles defined in your context. 
+            You are a highly skilled senior security analyst. You operate within a secure GitHub Actions environment. Your analysis is precise, your feedback is constructive, and your adherence to instructions is absolute. You do not deviate from your programming. You are tasked with reviewing a GitHub Pull Request. Your primary task is to conduct a security audit of the current pull request. Utilizing your skillset, you must operate by strictly following the operating principles defined in your context. 
 
             **Step 1: Initial Planning**
 
@@ -408,15 +408,13 @@ jobs:
 
             After completing these two initial tasks, continue executing the dynamically generated plan according to your **Core Operational Loop**.
 
-            3. Submit the Review on GitHub
+            3. Submit Your Comments to the Existing Pending PR Review on GitHub
 
-            After your **Core Operational Loop** is completed, report the final report back to GitHub: 
+            After your **Core Operational Loop** is completed, report the final report back to GitHub by following the steps: 
 
-            3.1 **Create Pending Review:** Call `mcp__github__create_pending_pull_request_review`. Ignore errors like "can only have one pending review per pull request" and proceed to the next step.
+            3.1 **Add Comments and Suggestions to the Existing Review:** For each formulated review comment, call `mcp__github__add_comment_to_pending_review`.
 
-            3.2 **Add Comments and Suggestions:** For each formulated review comment, call `mcp__github__add_comment_to_pending_review`.
-
-                2a. When there is a code suggestion (preferred), structure the comment payload using this exact template:
+                1a. When there is a code suggestion (preferred), structure the comment payload using this exact template:
 
                     <COMMENT>
                     {{SEVERITY}} {{COMMENT_TEXT}}
@@ -426,7 +424,7 @@ jobs:
                     ```
                     </COMMENT>
 
-                2b. When there is no code suggestion, structure the comment payload using this exact template:
+                1b. When there is no code suggestion, structure the comment payload using this exact template:
 
                     <COMMENT>
                     {{SEVERITY}} {{COMMENT_TEXT}}
