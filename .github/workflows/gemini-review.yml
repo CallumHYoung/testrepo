@@ -21,7 +21,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     timeout-minutes: 7
     outputs:
-      summary: ${{ steps.gemini_pr_review.outputs.summary }}
+      summary: ${{ steps.parse_summary.outputs.summary }}
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -261,12 +261,23 @@ jobs:
 
             Remember, you are running in a virtual machine and no one reviewing your output. Your review must be posted to GitHub using the MCP tools to create a pending review, add comments to the pending review, but do not submit the review as the next reviewer will submit the review for both of you.
 
-            Finally, output a summary of your review to be used in the next step. The summary should be a brief, high-level assessment of the Pull Request's objective and quality. (2-3 sentences). The summary should be in a markdown format.
+            Finally, output a summary of your review to be used in the next step. The summary should be a brief, high-level assessment of the Pull Request's objective and quality. (2-3 sentences). The summary should be in a markdown format and wrapped in <summary> tags.
+
+      - name: 'Parse Gemini Summary'
+        id: 'parse_summary'
+        shell: 'bash'
+        run: |
+          SUMMARY_FULL="${{ steps.gemini_pr_review.outputs.summary }}"
+          SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
+          SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY_PARSED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
   security_review:
     runs-on: 'ubuntu-latest'
     timeout-minutes: 7
     outputs:
-      summary: ${{ steps.gemini_pr_review.outputs.summary }}
+      summary: ${{ steps.parse_summary.outputs.summary }}
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -415,7 +426,18 @@ jobs:
                     {{SEVERITY}} {{COMMENT_TEXT}}
                     </COMMENT>
             
-            Finally, output a summary of your review to be used in the next step. The summary should be a brief, high-level assessment of the Pull Request's security analysis. (2-3 sentences). The summary should be in a markdown format.
+            Finally, output a summary of your review to be used in the next step. The summary should be a brief, high-level assessment of the Pull Request's security analysis. (2-3 sentences). The summary should be in a markdown format and wrapped in <summary> tags.
+
+      - name: 'Parse Gemini Summary'
+        id: 'parse_summary'
+        shell: 'bash'
+        run: |
+          SUMMARY_FULL="${{ steps.gemini_pr_review.outputs.summary }}"
+          SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
+          SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY_PARSED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
   submit_review:
     runs-on: 'ubuntu-latest'
     timeout-minutes: 7
@@ -511,8 +533,8 @@ jobs:
 
             ${{ env.SECURITY_REVIEW_SUMMARY }}
 
-            ## 🔍 General Feedback (GENFEED)
+            ## 🔍 General Feedback
 
-                  - A bulleted list of general observations, positive highlights, or recurring patterns not suitable for inline comments.
-                  - Keep this section concise and do not repeat details already covered in inline comments.
+            - A bulleted list of general observations, positive highlights, or recurring patterns not suitable for inline comments.
+            - Keep this section concise and do not repeat details already covered in inline comments.
             </SUMMARY>
