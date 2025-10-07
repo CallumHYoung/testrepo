@@ -271,8 +271,9 @@ jobs:
       - name: 'Parse Gemini Summary'
         id: 'parse_summary'
         shell: 'bash'
+        env:
+          SUMMARY_FULL: ${{ steps.gemini_pr_review.outputs.summary }}
         run: |
-          SUMMARY_FULL="${{ steps.gemini_pr_review.outputs.summary }}"
           if [[ "$SUMMARY_FULL" == *"<summary>"* && "$SUMMARY_FULL" == *"</summary>"* ]]; then
             SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
             SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
@@ -447,8 +448,9 @@ jobs:
       - name: 'Parse Gemini Summary'
         id: 'parse_summary'
         shell: 'bash'
+        env:
+          SUMMARY_FULL: ${{ steps.gemini_pr_review.outputs.summary }}
         run: |
-          SUMMARY_FULL="${{ steps.gemini_pr_review.outputs.summary }}"
           if [[ "$SUMMARY_FULL" == *"<summary>"* && "$SUMMARY_FULL" == *"</summary>"* ]]; then
             SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
             SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
