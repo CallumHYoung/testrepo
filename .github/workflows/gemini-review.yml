@@ -279,9 +279,9 @@ jobs:
 
   security_review:
     runs-on: 'ubuntu-latest'
+    needs: 
+      - 'review'
     timeout-minutes: 7
-    outputs:
-      summary: ${{ steps.parse_summary.outputs.summary }}
     permissions:
       contents: 'read'
       id-token: 'write'
