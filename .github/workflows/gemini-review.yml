@@ -342,4 +342,4 @@ jobs:
                 ]
               }
             }
-          prompt: '/security:github'
+          prompt: '/security:github-pr'
