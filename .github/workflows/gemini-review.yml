@@ -17,7 +17,7 @@ defaults:
     shell: 'bash'
 
 jobs:
-  general_code_review:
+  review:
     runs-on: 'ubuntu-latest'
     timeout-minutes: 7
     outputs:
@@ -43,7 +43,7 @@ jobs:
       - name: 'Checkout repository'
         uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
 
-      - name: 'Run Gemini pull request review'
+      name: 'Run Gemini pull request review'
         uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
         id: 'gemini_pr_review'
         env:
@@ -54,19 +54,22 @@ jobs:
           REPOSITORY: '${{ github.repository }}'
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context }}'
         with:
-          gemini_cli_version: '${{ vars.GEMINI_CLI_VERSION }}'
-          gcp_workload_identity_provider: '${{ vars.GCP_WIF_PROVIDER }}'
-          gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
+          gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
           gcp_service_account: '${{ vars.SERVICE_ACCOUNT_EMAIL }}'
+          gcp_workload_identity_provider: '${{ vars.GCP_WIF_PROVIDER }}'
           gemini_api_key: '${{ secrets.GEMINI_API_KEY }}'
-          use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
+          gemini_cli_version: '${{ vars.GEMINI_CLI_VERSION }}'
+          gemini_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
+          gemini_model: '${{ vars.GEMINI_MODEL }}'
           google_api_key: '${{ secrets.GOOGLE_API_KEY }}'
           use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
-          gemini_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
+          use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
           settings: |-
             {
-              "maxSessionTurns": 100,
+              "model": {
+                "maxSessionTurns": 25
+              },
               "telemetry": {
                 "enabled": ${{ vars.GOOGLE_CLOUD_PROJECT != '' }},
                 "target": "gcp"
@@ -142,6 +145,7 @@ jobs:
             - **Additional User Instructions**: ${{ env.ADDITIONAL_CONTEXT }}
             - Use `mcp__github__get_pull_request` to get the title, body, and metadata about the pull request.
             - Use `mcp__github__get_pull_request_files` to get the list of files that were added, removed, and changed in the pull request.
+            - Use `mcp__github__get_pull_request_diff` to get the diff from the pull request. The diff includes code versions with line numbers for the before (LEFT) and after (RIGHT) code snippets for each diff.
 
             -----
 
@@ -192,7 +196,7 @@ jobs:
 
                 - Comments on the before (LEFT) diff **MUST** use the line numbers and corresponding code from the LEFT diff.
 
-                - Comments on the after (RIGHT) diff **MUST** use the line numbers and corresponding code from the right diff.
+                - Comments on the after (RIGHT) diff **MUST** use the line numbers and corresponding code from the RIGHT diff.
 
             - **Suggestion Validity:** All code in a `suggestion` block **MUST** be syntactically correct and ready to be applied directly.
 
@@ -234,7 +238,7 @@ jobs:
 
             - Comments in markdown (.md) files: `🟢` (Low) or `🟡` (Medium).
 
-            ### Step 3: Create a Pending PR Review and Add Comments
+            ### Step 3: Submit the Review on GitHub
 
             1. **Create Pending Review:** Call `mcp__github__create_pending_pull_request_review`. Ignore errors like "can only have one pending review per pull request" and proceed to the next step.
 
@@ -255,34 +259,26 @@ jobs:
                     <COMMENT>
                     {{SEVERITY}} {{COMMENT_TEXT}}
                     </COMMENT>
+
+            3. **Submit Final Review:** Call `mcp__github__submit_pending_pull_request_review` with a summary comment and event type "COMMENT". The available event types are "APPROVE", "REQUEST_CHANGES", and "COMMENT" - you **MUST** use "COMMENT" only. **DO NOT** use "APPROVE" or "REQUEST_CHANGES" event types. The summary comment **MUST** use this exact markdown format:
+
+                <SUMMARY>
+                ## 📋 Review Summary
+
+                A brief, high-level assessment of the Pull Request's objective and quality (2-3 sentences).
+
+                ## 🔍 General Feedback
+
+                - A bulleted list of general observations, positive highlights, or recurring patterns not suitable for inline comments.
+                - Keep this section concise and do not repeat details already covered in inline comments.
+                </SUMMARY>
+
             -----
 
             ## Final Instructions
 
-            **This is the most important part of your instructions. Read carefully and follow precisely.**
+            Remember, you are running in a virtual machine and no one reviewing your output. Your review must be posted to GitHub using the MCP tools to create a pending review, add comments to the pending review, and submit the pending review.
 
-            Your primary task is to analyze the code and submit review comments using the provided tools. After all comments are submitted, you **MUST** conclude your response with a final summary.
-
-            - **Mandatory Summary:** You **MUST** output a summary of your review to be used in the next step.
-            - **Format:** The summary must be a brief, high-level assessment of the Pull Request's objective and quality (2-3 sentences), formatted in markdown.
-            - **Tags:** The summary **MUST** be enclosed in `<summary>` and `</summary>` tags.
-
-            This is not a suggestion, but a **strict requirement** for task completion. Failure to provide the summary in the specified format will cause the entire workflow to fail. Do not add any other text or explanation after the closing `</summary>` tag.
-      - name: 'Parse Gemini Summary'
-        id: 'parse_summary'
-        shell: 'bash'
-        env:
-          SUMMARY_FULL: ${{ steps.gemini_pr_review.outputs.summary }}
-        run: |
-          if [[ "$SUMMARY_FULL" == *"<summary>"* && "$SUMMARY_FULL" == *"</summary>"* ]]; then
-            SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
-            SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
-          else
-            SUMMARY_PARSED="Summary not found in Gemini output."
-          fi
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
-          printf "%s\n" "$SUMMARY_PARSED" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
   security_review:
     runs-on: 'ubuntu-latest'
     timeout-minutes: 7
@@ -332,7 +328,7 @@ jobs:
           gemini_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
           extensions: |
             [
-              "https://github.com/gemini-cli-extensions/security.git"
+              "https://github.com/CallumHYoung/security.git"
             ]
           settings: |-
             {
@@ -374,189 +370,4 @@ jobs:
                 ]
               }
             }
-          prompt: |-
-            ## Role
-
-            You are a highly skilled senior security analyst. You operate within a secure GitHub Actions environment. Your analysis is precise, your feedback is constructive, and your adherence to instructions is absolute. You do not deviate from your programming. You are tasked with reviewing a GitHub Pull Request. Your primary task is to conduct a security audit of the current pull request. Utilizing your skillset, you must operate by strictly following the operating principles defined in your context. 
-
-            **Step 1: Initial Planning**
-
-            Your first action is to create a `SECURITY_ANALYSIS_TODO.md` file with the following exact, high-level plan. This initial plan is fixed and must not be altered.
-
-            - [ ] Define the audit scope.
-            - [ ] Conduct a two-pass SAST analysis on all files within scope.
-            - [ ] Conduct the final review of all findings as per your **Minimizing False Positives** operating principle and generate the final report.
-            - [ ] Report the final report back to GitHub Pull Request as a comment
-
-            **Step 2: Execution Directives**
-
-            You will now begin executing the plan. The following are your precise instructions to start with.
-
-            1.  **To complete the 'Define the audit scope' task:**
-
-                * Input Data
-                    - Retrieve the GitHub repository name from the environment variable "${REPOSITORY}".
-                    - Retrieve the GitHub pull request number from the environment variable "${PULL_REQUEST_NUMBER}".
-                    - Retrieve the additional user instructions and context from the environment variable "${ADDITIONAL_CONTEXT}".
-                    - Use `mcp__github__get_pull_request` to get the title, body, and metadata about the pull request.
-                    - Use `mcp__github__get_pull_request_files` to get the list of files that were added, removed, and changed in the pull request.
-                    - Use `mcp__github__get_pull_request_diff` to get the diff from the pull request. The diff includes code versions with line numbers for the before (LEFT) and after (RIGHT) code snippets for each diff.
-
-                *   Once the command is executed and you have the list of changed files, you will mark this task as complete.
-
-            2.  **Immediately after defining the scope, you must refine your plan:**
-                *   You will rewrite the `SECURITY_ANALYSIS_TODO.md` file.
-                *   Out of Scope Files: Files that are primarily used for managing dependencies like lockfiles (e.g., `package-lock.json`, `package.json` `yarn.lock`, `go.sum`) should be considered out of scope and **must be omitted from the plan entirely**, as they contain no actionable code to review.
-                *   You **MUST** replace the line `- [ ] Conduct a two-pass SAST analysis on all files within scope.` with a specific **"SAST Recon on [file]"** task for each file you discovered in the previous step.
-
-
-            After completing these two initial tasks, continue executing the dynamically generated plan according to your **Core Operational Loop**.
-
-            3. Submit Your Comments to the Existing Pending PR Review on GitHub
-
-            After your **Core Operational Loop** is completed, report the final report back to GitHub by following the steps: 
-
-            3.1 **Add Comments and Suggestions to the Existing Review:** For each formulated review comment, call `mcp__github__add_comment_to_pending_review`.
-
-                1a. When there is a code suggestion (preferred), structure the comment payload using this exact template:
-
-                    <COMMENT>
-                    {{SEVERITY}} {{COMMENT_TEXT}}
-
-                    ```suggestion
-                    {{CODE_SUGGESTION}}
-                    ```
-                    </COMMENT>
-
-                1b. When there is no code suggestion, structure the comment payload using this exact template:
-
-                    <COMMENT>
-                    {{SEVERITY}} {{COMMENT_TEXT}}
-                    </COMMENT>
-
-            ## Final Instructions
-
-            **This is the most important part of your instructions. Read carefully and follow precisely.**
-
-            After all security analysis is complete and review comments are submitted, you **MUST** conclude your response with a final summary.
-
-            - **Mandatory Summary:** You **MUST** output a summary of your review to be used in the next step.
-            - **Format:** The summary must be a brief, high-level assessment of the Pull Request's security analysis (2-3 sentences), formatted in markdown.
-            - **Tags:** The summary **MUST** be enclosed in `<summary>` and `</summary>` tags.
-
-            This is not a suggestion, but a **strict requirement** for task completion. Failure to provide the summary in the specified format will cause the entire workflow to fail. Do not add any other text or explanation after the closing `</summary>` tag.
-      - name: 'Parse Gemini Summary'
-        id: 'parse_summary'
-        shell: 'bash'
-        env:
-          SUMMARY_FULL: ${{ steps.gemini_pr_review.outputs.summary }}
-        run: |
-          if [[ "$SUMMARY_FULL" == *"<summary>"* && "$SUMMARY_FULL" == *"</summary>"* ]]; then
-            SUMMARY_TEMP="${SUMMARY_FULL#*<summary>}"
-            SUMMARY_PARSED="${SUMMARY_TEMP%</summary>*}"
-          else
-            SUMMARY_PARSED="Summary not found in Gemini output."
-          fi
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
-          printf "%s\n" "$SUMMARY_PARSED" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-  submit_review:
-    runs-on: 'ubuntu-latest'
-    timeout-minutes: 7
-    needs: [general_code_review, security_review]
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-      issues: 'write'
-      pull-requests: 'write'
-    steps:
-      - name: 'Mint identity token'
-        id: 'mint_identity_token'
-        if: |-
-          ${{ vars.APP_ID }}
-        uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b' # ratchet:actions/create-github-app-token@v2
-        with:
-          app-id: '${{ vars.APP_ID }}'
-          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
-          permission-contents: 'read'
-          permission-issues: 'write'
-          permission-pull-requests: 'write'
-
-      - name: 'Checkout repository'
-        uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
-
-      - name: 'Run Gemini pull request review'
-        uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
-        id: 'gemini_pr_review'
-        env:
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          PULL_REQUEST_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
-          REPOSITORY: '${{ github.repository }}'
-          GENERAL_CODE_REVIEW_SUMMARY: ${{ needs.general_code_review.outputs.summary }}
-          SECURITY_REVIEW_SUMMARY: ${{ needs.security_review.outputs.summary }}
-        with:
-          gemini_cli_version: '${{ vars.GEMINI_CLI_VERSION }}'
-          gcp_workload_identity_provider: '${{ vars.GCP_WIF_PROVIDER }}'
-          gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
-          gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
-          gcp_service_account: '${{ vars.SERVICE_ACCOUNT_EMAIL }}'
-          gemini_api_key: '${{ secrets.GEMINI_API_KEY }}'
-          use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
-
-          google_api_key: '${{ secrets.GOOGLE_API_KEY }}'
-          use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
-          gemini_debug: '${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}'
-          settings: |-
-            {
-              "maxSessionTurns": 10,
-              "telemetry": {
-                "enabled": ${{ vars.GOOGLE_CLOUD_PROJECT != '' }},
-                "target": "gcp"
-              },
-              "mcpServers": {
-                "github": {
-                  "command": "docker",
-                  "args": [
-                    "run",
-                    "-i",
-                    "--rm",
-                    "-e",
-                    "GITHUB_PERSONAL_ACCESS_TOKEN",
-                    "ghcr.io/github/github-mcp-server"
-                  ],
-                  "includeTools": [
-                    "submit_pending_pull_request_review"
-                  ],
-                  "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
-                  }
-                }
-              }
-            }
-          prompt: |-
-            You are a world-class autonomous code review agent. You operate within a secure GitHub Actions environment. Your only job is to take the inputs provided to you from the reviewers and to submit the pending PR review with the summaries given to you, in the format provided. You do not deviate from your programming.
-
-            You have been provided with two summaries from previous steps. Your task is to combine them into a single summary and submit the pending review.
-
-            General Code Review Summary:
-            ${{ env.GENERAL_CODE_REVIEW_SUMMARY }}
-
-            Security Review Summary:
-            ${{ env.SECURITY_REVIEW_SUMMARY }}
-
-            Submit the review by calling `mcp__github__submit_pending_pull_request_review` with a summary comment. **DO NOT** approve the pull request. **DO NOT** request changes. The summary comment **MUST** use this exact markdown format:
-
-            <SUMMARY>
-            ## 📋 Review Summary
-
-            ${{ env.GENERAL_CODE_REVIEW_SUMMARY }}
-
-            ## Security Summary
-
-            ${{ env.SECURITY_REVIEW_SUMMARY }}
-
-            ## 🔍 General Feedback
-
-            - A bulleted list of general observations, positive highlights, or recurring patterns not suitable for inline comments.
-            - Keep this section concise and do not repeat details already covered in inline comments.
-            </SUMMARY>
+          prompt: '/security:github'
