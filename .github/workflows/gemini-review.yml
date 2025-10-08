@@ -351,7 +351,8 @@ jobs:
                     "create_pending_pull_request_review",
                     "get_pull_request_diff",
                     "get_pull_request_files",
-                    "get_pull_request"
+                    "get_pull_request",
+                    "submit_pending_pull_request_review"
                   ],
                   "env": {
                     "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
