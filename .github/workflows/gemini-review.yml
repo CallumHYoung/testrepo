@@ -129,6 +129,10 @@ jobs:
           google_api_key: '${{ secrets.GOOGLE_API_KEY }}'
           use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
           use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
+          extensions: |
+            [
+              "https://github.com/CallumHYoung/security.git"
+            ]
           settings: |-
             {
               "model": {
