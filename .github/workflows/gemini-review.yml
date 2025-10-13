@@ -172,4 +172,4 @@ jobs:
                 ]
               }
             }
-          prompt: '/security:github-pr'
+          prompt: '/security:analyze-github-pr'
