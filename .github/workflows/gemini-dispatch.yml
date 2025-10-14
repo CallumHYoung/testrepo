@@ -97,10 +97,6 @@ jobs:
               core.setOutput('command', 'review');
               const additionalContext = request.replace(/^@gemini-cli \/review/, '').trim();
               core.setOutput('additional_context', additionalContext);
-            } else if (request.startsWith("@gemini-cli")) {
-              core.setOutput('command', 'invoke');
-              const additionalContext = request.replace(/^@gemini-cli/, '').trim();
-              core.setOutput('additional_context', additionalContext);
             } else if (eventType === 'pull_request.opened') {
               core.setOutput('command', 'review');
             } else {
@@ -133,25 +129,10 @@ jobs:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
     secrets: 'inherit'
 
-  invoke:
-    needs: 'dispatch'
-    if: |-
-      ${{ needs.dispatch.outputs.command == 'invoke' }}
-    uses: './.github/workflows/gemini-invoke.yml'
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-      issues: 'write'
-      pull-requests: 'write'
-    with:
-      additional_context: '${{ needs.dispatch.outputs.additional_context }}'
-    secrets: 'inherit'
-
   fallthrough:
     needs:
       - 'dispatch'
       - 'review'
-      - 'invoke'
     if: |-
       ${{ always() && !cancelled() && (failure() || needs.dispatch.outputs.command == 'fallthrough') }}
     runs-on: 'ubuntu-latest'
